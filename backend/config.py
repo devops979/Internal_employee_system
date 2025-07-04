@@ -1,1 +1,3 @@
-// Placeholder for config.py
+import os
+SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///employees.db")
+SQLALCHEMY_TRACK_MODIFICATIONS = False
