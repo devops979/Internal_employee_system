@@ -5,8 +5,10 @@ module.exports = {
   output: {
     filename: 'bundle.js',
     path: path.resolve(__dirname, 'public'),
+    clean: true,              // ← removes old bundles on rebuild
     publicPath: '/'
   },
+
   devServer: {
     static: path.join(__dirname, 'public'),
     port: 3000,

@@ -13,12 +13,14 @@ spec:
       labels:
         app: flask-backend
       annotations:
-        iam.amazonaws.com/role: arn:aws:iam::<ACCOUNT_ID>:role/${cluster_name}-irsa-secrets
+        # 👉 use the EKS-preferred annotation key
+        eks.amazonaws.com/role-arn: arn:aws:iam::<ACCOUNT_ID>:role/${cluster_name}-irsa-secrets
     spec:
-      serviceAccountName: secrets-reader
+      serviceAccountName: secrets-reader        # must exist in backend ns
       containers:
       - name: flask
-        image: <AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/flask-backend:latest
+        image: <AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/flask-backend:__IMAGE_TAG__
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5000
         env:
@@ -40,6 +42,7 @@ metadata:
   name: flask-backend
   namespace: backend
 spec:
+  type: ClusterIP
   ports:
   - port: 80
     targetPort: 5000

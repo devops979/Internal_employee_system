@@ -1,19 +1,26 @@
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
 
-export default function EmployeeList(){
+export default function EmployeeList() {
   const [employees, setEmployees] = useState([]);
 
-  useEffect(()=>{
+  const load = () =>
     fetch('/api/employees')
-      .then(r=>r.json())
+      .then(r => r.json())
       .then(setEmployees);
-  }, []);
+
+  useEffect(load, []);
 
   return (
-    <ul>
-      {employees.map(emp=>(
-        <li key={emp.id}>{emp.name} — {emp.department}</li>
-      ))}
-    </ul>
+    <>
+      {/* Hidden button so parent can trigger a reload */}
+      <button id="reload-btn" style={{ display: 'none' }} onClick={load} />
+      <ul>
+        {employees.map(e => (
+          <li key={e.id}>
+            {e.name} — {e.department}
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }

@@ -1,13 +1,15 @@
 import React from 'react';
-import EmployeeList from './EmployeeList';
 import EmployeeForm from './EmployeeForm';
+import EmployeeList from './EmployeeList';
 
 export default function App() {
+  const reload = () => document.getElementById('reload-btn')?.click();
+
   return (
-    <div style={{padding:'1rem'}}>
+    <>
       <h1>Employee Directory</h1>
-      <EmployeeForm/>
-      <EmployeeList/>
-    </div>
+      <EmployeeForm onSaved={reload} />
+      <EmployeeList />
+    </>
   );
 }

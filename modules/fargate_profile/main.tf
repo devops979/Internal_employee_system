@@ -7,18 +7,30 @@ resource "aws_eks_fargate_profile" "this" {
   selector {
     namespace = var.namespace
   }
+
+  tags = {
+    Name = "${var.namespace}-fargate"
+  }
+  depends_on = [aws_iam_role_policy_attachment.fargate]
 }
 
 data "aws_iam_policy_document" "fargate_assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
-    principals { type = "Service"; identifiers = ["eks-fargate-pods.amazonaws.com"] }
+    principals {
+      type        = "Service"
+      identifiers = ["eks-fargate-pods.amazonaws.com"]
+    }
   }
 }
 
 resource "aws_iam_role" "fargate" {
   name               = "${var.namespace}-fargate-role"
   assume_role_policy = data.aws_iam_policy_document.fargate_assume_role.json
+
+  tags = {
+    Name = "${var.namespace}-fargate-role"
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "fargate" {

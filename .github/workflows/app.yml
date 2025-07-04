@@ -3,49 +3,68 @@ name: Build & Deploy Apps
 on:
   push:
     paths:
-      - 'frontend/**'
-      - 'backend/**'
+      - "frontend/**"
+      - "backend/**"
+      - ".github/workflows/build-deploy.yml"   # re-run if workflow changes
+    branches: [ main ]
+
+env:
+  AWS_REGION: us-east-1
+  IMAGE_TAG: ${{ github.sha }}
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
+      id-token: write      # OIDC to assume role
       contents: read
+
     env:
-      AWS_REGION: us-east-1
-      ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+      ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
+      
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_GITHUB_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_GITHUB_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+    - name: Login to Amazon ECR
+      uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Login to ECR
-        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build & Push Flask image
-        run: |
-          docker build -t flask-backend ./backend
-          docker tag flask-backend:latest $ECR_REGISTRY/flask-backend:latest
-          docker push $ECR_REGISTRY/flask-backend:latest
+    - name: Build & push Flask (backend)
+      run: |
+        docker build -t flask-backend ./backend
+        docker tag  flask-backend:latest $ECR_REGISTRY/support-portal-flask-backend:$IMAGE_TAG
+        docker push $ECR_REGISTRY/support-portal-flask-backend:$IMAGE_TAG
 
-      - name: Build & Push React image
-        run: |
-          docker build -t react-frontend ./frontend
-          docker tag react-frontend:latest $ECR_REGISTRY/react-frontend:latest
-          docker push $ECR_REGISTRY/react-frontend:latest
+    # ───────────────────────── 4. Build & push React ───────────────
+    - name: Build & push React (frontend)
+      run: |
+        docker build -t react-frontend ./frontend
+        docker tag  react-frontend:latest $ECR_REGISTRY/support-portal-flask-frontend:$IMAGE_TAG
+        docker push $ECR_REGISTRY/support-portal-flask-frontend:$IMAGE_TAG
 
-      - name: Configure kubectl
-        run: |
-          aws eks update-kubeconfig --name support-eks --region $AWS_REGION
 
-      - name: Deploy Manifests
-        run: |
-          kubectl apply -f k8s/00-namespaces.yaml
-          kubectl apply -f k8s/backend-deployment.yaml
-          kubectl apply -f k8s/frontend-deployment.yaml
-          kubectl apply -f k8s/ingress.yaml
+    - name: Configure kubectl for EKS
+      run: |
+        aws eks update-kubeconfig --name support-eks --region $AWS_REGION
+
+    - name: Deploy manifests
+      run: |
+        # Create namespaces (idempotent)
+        kubectl apply -f k8s/namespaces.yaml
+
+        # Patch images with the new tag (no manifest edits needed)
+        kubectl set image deployment/flask-backend  -n backend  \
+          flask=$ECR_REGISTRY/support-portal-flask-backend:$IMAGE_TAG
+
+        kubectl set image deployment/react-frontend -n frontend \
+          react=$ECR_REGISTRY/support-portal-flask-frontend:$IMAGE_TAG
+
+        # Ingress & any other static manifests
+        kubectl apply -f k8s/ingress.yaml
+
