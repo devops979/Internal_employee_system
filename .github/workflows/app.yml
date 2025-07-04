@@ -1,0 +1,51 @@
+name: Build & Deploy Apps
+
+on:
+  push:
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      AWS_REGION: us-east-1
+      ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & Push Flask image
+        run: |
+          docker build -t flask-backend ./backend
+          docker tag flask-backend:latest $ECR_REGISTRY/flask-backend:latest
+          docker push $ECR_REGISTRY/flask-backend:latest
+
+      - name: Build & Push React image
+        run: |
+          docker build -t react-frontend ./frontend
+          docker tag react-frontend:latest $ECR_REGISTRY/react-frontend:latest
+          docker push $ECR_REGISTRY/react-frontend:latest
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig --name support-eks --region $AWS_REGION
+
+      - name: Deploy Manifests
+        run: |
+          kubectl apply -f k8s/00-namespaces.yaml
+          kubectl apply -f k8s/backend-deployment.yaml
+          kubectl apply -f k8s/frontend-deployment.yaml
+          kubectl apply -f k8s/ingress.yaml
