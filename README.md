@@ -1,1 +1,1 @@
-# Internal_employee_system
+// Placeholder for README.md
