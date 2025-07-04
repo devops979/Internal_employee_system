@@ -4,8 +4,7 @@ on:
   push:
     paths:
       - "frontend/**"
-      - "backend/**"
-      - ".github/workflows/build-deploy.yml"   # re-run if workflow changes
+      - "backend/**"  
     branches: [ main ]
 
 env:
