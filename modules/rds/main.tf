@@ -15,5 +15,3 @@ resource "aws_db_instance" "this" {
   skip_final_snapshot     = true
   publicly_accessible     = false
 }
-
-output "db_endpoint" { value = aws_db_instance.this.endpoint }
