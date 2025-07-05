@@ -1,3 +1,4 @@
+const HtmlWebpackPlugin = require('html-webpack-plugin');
 const path = require('path');
 
 module.exports = {
@@ -8,6 +9,13 @@ module.exports = {
     clean: true,              // ← removes old bundles on rebuild
     publicPath: '/'
   },
+  plugins: [
+    //  ➜ recreates public/index.html and injects <script src="bundle.js">
+    new HtmlWebpackPlugin({
+      template: './public/index.html',
+      inject: 'body'
+    })
+  ],
 
   devServer: {
     static: path.join(__dirname, 'public'),
