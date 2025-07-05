@@ -6,7 +6,7 @@ resource "random_password" "db" {
 }
 
 resource "aws_secretsmanager_secret" "db" {
-  name        = "${var.project}-db-admin"
+  name        = "${var.project}-db-admin-new"
   description = "RDS admin credentials for ${var.project}"
 }
 
