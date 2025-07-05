@@ -1,34 +1,44 @@
-const HtmlWebpackPlugin = require('html-webpack-plugin');
+// webpack.config.js
 const path = require('path');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 
-module.exports = {
-  entry: './src/index.js',
-  output: {
-    filename: 'bundle.js',
-    path: path.resolve(__dirname, 'public'),
-    clean: true,              // ← removes old bundles on rebuild
-    publicPath: '/'
-  },
-  plugins: [
-    //  ➜ recreates public/index.html and injects <script src="bundle.js">
-    new HtmlWebpackPlugin({
-      template: './public/index.html',
-      inject: 'body'
-    })
-  ],
+module.exports = (_env, argv) => {
+  const isProd = argv.mode === 'production';
 
-  devServer: {
-    static: path.join(__dirname, 'public'),
-    port: 3000,
-    historyApiFallback: true,
-    proxy: {
-      '/api': 'http://localhost:5000'
+  return {
+    entry: './src/index.js',          // ✅ matches your tree
+    output: {
+      filename: isProd ? '[name].[contenthash].js' : 'bundle.js',
+      path: path.resolve(__dirname, 'build'),  // all bundles land in /build
+      publicPath: '/'                           // crucial for React-Router
+    },
+
+    plugins: [
+      new CleanWebpackPlugin(),
+      new HtmlWebpackPlugin({
+        template: './public/index.html',  // ✅ keeps your own <title> etc.
+        inject: 'body'
+      })
+    ],
+
+    module: {
+      rules: [
+        {
+          test: /\.jsx?$/,
+          exclude: /node_modules/,
+          use: 'babel-loader'
+        }
+      ]
+    },
+    resolve: { extensions: ['.js', '.jsx'] },
+
+    /* Dev server for local hacking ------------------------------------ */
+    devServer: {
+      static: path.join(__dirname, 'build'),
+      port: 3000,
+      historyApiFallback: true,      // React-Router refreshes
+      proxy: { '/api': 'http://localhost:5000' }  // → Flask backend
     }
-  },
-  module: {
-    rules: [
-      { test: /\.jsx?$/, exclude: /node_modules/, loader: 'babel-loader' }
-    ]
-  },
-  resolve: { extensions: ['.js', '.jsx'] }
+  };
 };

@@ -1,19 +1,16 @@
-#####################  build stage  #####################
-FROM node:20-alpine AS build
+# ───── Stage 1: React build ────────────────────────────────────────────────
+FROM node:20-alpine AS builder
 WORKDIR /app
 
-# copy manifests ­– lock file included
 COPY package*.json ./
-RUN npm ci          # ← uses package-lock.json, faster & deterministic
+RUN npm ci        # reproducible install
 
-# copy source and build
 COPY . .
-RUN npm run build   # emits /app/public
+RUN npm run build           # outputs to /app/build  (see webpack)
 
-#####################  runtime stage  ###################
+# ───── Stage 2: Nginx runtime ──────────────────────────────────────────────
 FROM nginx:1.27-alpine
-COPY --from=build /app/public /usr/share/nginx/html
-# Replace default Nginx config with custom config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/build /usr/share/nginx/html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
