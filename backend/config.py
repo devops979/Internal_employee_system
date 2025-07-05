@@ -1,21 +1,18 @@
-import os
-import urllib.parse
+import os, urllib.parse
 
 class Config:
-    # If a full DATABASE_URL is supplied (e.g. from Secrets Manager),
-    # just use it. Otherwise build one for local Docker Compose.
+    # DB URL (local docker-compose or injected by Secrets Manager)
     if "DATABASE_URL" in os.environ:
         SQLALCHEMY_DATABASE_URI = os.environ["DATABASE_URL"]
     else:
-        user     = urllib.parse.quote_plus(os.getenv("DB_USER", "admin"))
-        password = urllib.parse.quote_plus(os.getenv("DB_PASS", "password"))
-        host     = os.getenv("DB_HOST", "mysql")      # docker-compose service name
-        port     = os.getenv("DB_PORT", "3306")
-        dbname   = os.getenv("DB_NAME", "employees")
-        SQLALCHEMY_DATABASE_URI = (
-            f"mysql+pymysql://{user}:{password}@{host}:{port}/{dbname}"
-        )
+        user = urllib.parse.quote_plus(os.getenv("DB_USER", "admin"))
+        pwd  = urllib.parse.quote_plus(os.getenv("DB_PASS", "password"))
+        host = os.getenv("DB_HOST", "mysql")
+        port = os.getenv("DB_PORT", "3306")
+        name = os.getenv("DB_NAME", "employees")
+        SQLALCHEMY_DATABASE_URI = f"mysql+pymysql://{user}:{pwd}@{host}:{port}/{name}"
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret")
-    CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*")
+    SECRET_KEY        = os.getenv("SECRET_KEY", "dev-secret")
+    JWT_SECRET_KEY    = os.getenv("JWT_SECRET_KEY", "dev-jwt-secret")  # ← new
+    CORS_ORIGINS      = os.getenv("CORS_ORIGINS", "*")

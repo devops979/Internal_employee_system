@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: employees
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: adminpass
+    ports:
+      - "3306:3306"
+
+  backend:
+    build: ./backend          # uses your Dockerfile
+    environment:
+      DATABASE_URL: mysql+pymysql://admin:adminpass@mysql:3306/employees
+      FLASK_ENV: development
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mysql
+
+  frontend:
+    build: ./frontend         # uses Nginx Dockerfile
+    environment:
+      # proxy not needed in container—use full URL
+      REACT_APP_API_URL: http://backend:5000
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend

@@ -1,32 +1,42 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: react-frontend
+  name: frontend
   namespace: frontend
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: react-frontend
+      app: frontend
   template:
     metadata:
       labels:
-        app: react-frontend
+        app: frontend
     spec:
       containers:
-      - name: react
-        image: <AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/react-frontend:latest
+      - name: frontend
+        image: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/frontend:latest
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
         ports:
         - containerPort: 3000
+        env:
+          - name: REACT_APP_API_URL
+            value: https://<YOUR_DOMAIN>/api  
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: react-frontend
+  name: frontend
   namespace: frontend
 spec:
-  ports:
-  - port: 80
-    targetPort: 3000
   selector:
-    app: react-frontend
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 3000

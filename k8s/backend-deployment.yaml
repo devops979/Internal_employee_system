@@ -1,50 +1,50 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: flask-backend
+  name: backend
   namespace: backend
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: flask-backend
+      app: backend
   template:
     metadata:
       labels:
-        app: flask-backend
-      annotations:
-        # 👉 use the EKS-preferred annotation key
-        eks.amazonaws.com/role-arn: arn:aws:iam::<ACCOUNT_ID>:role/${cluster_name}-irsa-secrets
+        app: backend
     spec:
-      serviceAccountName: secrets-reader        # must exist in backend ns
+      serviceAccountName: secrets-reader 
+      nodeSelector:
+        nodegroup-type: backend
       containers:
-      - name: flask
-        image: <AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/flask-backend:__IMAGE_TAG__
-        imagePullPolicy: IfNotPresent
+      - name: backend
+        image: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/backend:latest
         ports:
         - containerPort: 5000
         env:
-        - name: DATABASE_URL
+        - name: DB_SECRET_ID        # looked-up at runtime
+          value: employee-portal-dbcred
+        - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
-              name: db-credentials
-              key: url
-        readinessProbe:
-          httpGet:
-            path: /api/employees
-            port: 5000
-          initialDelaySeconds: 5
-          periodSeconds: 10
+              name: backend-secrets
+              key: jwt  
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: flask-backend
+  name: backend
   namespace: backend
 spec:
-  type: ClusterIP
-  ports:
-  - port: 80
-    targetPort: 5000
   selector:
-    app: flask-backend
+    app: backend
+  ports:
+    - port: 5000
+      targetPort: 5000
