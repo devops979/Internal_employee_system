@@ -1,11 +1,16 @@
 name: Build & Deploy Apps
 
 on:
-  push:
-    paths:
-      - "frontend/**"
-      - "backend/**"  
-    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Choose the Terraform action'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+          - apply
+          - destroy
 
 env:
   AWS_REGION: us-east-1
@@ -19,7 +24,7 @@ jobs:
       contents: read
 
     env:
-      ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+      ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com
 
     steps:
     - uses: actions/checkout@v4
@@ -36,6 +41,7 @@ jobs:
 
     - name: Build & push Flask (backend)
       run: |
+        aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 211125325699.dkr.ecr.ap-south-1.amazonaws.com
         docker build -t flask-backend ./backend
         docker tag  flask-backend:latest $ECR_REGISTRY/support-portal-flask-backend:$IMAGE_TAG
         docker push $ECR_REGISTRY/support-portal-flask-backend:$IMAGE_TAG
@@ -43,14 +49,17 @@ jobs:
     # ───────────────────────── 4. Build & push React ───────────────
     - name: Build & push React (frontend)
       run: |
+        aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 211125325699.dkr.ecr.ap-south-1.amazonaws.com
         docker build -t react-frontend ./frontend
         docker tag  react-frontend:latest $ECR_REGISTRY/support-portal-flask-frontend:$IMAGE_TAG
         docker push $ECR_REGISTRY/support-portal-flask-frontend:$IMAGE_TAG
-
-
+      
+    - uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.32.0'
     - name: Configure kubectl for EKS
       run: |
-        aws eks update-kubeconfig --name support-eks --region $AWS_REGION
+        aws eks update-kubeconfig --name support-eks --region ap-south-1
 
     - name: Deploy manifests
       run: |
