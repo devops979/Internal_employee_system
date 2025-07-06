@@ -23,6 +23,12 @@ module "vpc" {
   private_subnet_cidrs = var.private_subnet_cidrs
 }
 
+module "security_group" {
+  source = "./modules/security_group"
+  project            = var.project
+  vpc_id             = module.vpc.vpc_id
+}
+
 
 module "eks" {
   source             = "./modules/eks"
@@ -31,6 +37,7 @@ module "eks" {
   vpc_id             = module.vpc.vpc_id
   private_subnet_ids = module.vpc.private_subnet_ids
   public_subnet_ids  = module.vpc.public_subnet_ids
+  backend_sg_id      = module.security_group.backend_sg_id 
 }
 
 
@@ -39,7 +46,6 @@ module "fargate" {
   cluster_name = module.eks.eks_cluster_name # 🔧 fixed output name
   subnet_ids   = module.vpc.private_subnet_ids
   namespace    = "frontend"
-
   depends_on = [module.eks] # avoid race
 }
 
@@ -50,7 +56,7 @@ module "rds" {
   db_engine     = var.db_engine
   vpc_id        = module.vpc.vpc_id
   subnet_ids    = module.vpc.private_subnet_ids
-  allowed_sg_id = module.eks.cluster_security_group_id # <— NEW
+  allowed_sg_id = module.eks.cluster_security_group_id 
 }
 
 
