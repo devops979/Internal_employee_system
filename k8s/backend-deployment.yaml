@@ -1,50 +1,74 @@
+# ───────────────────────── 1) BACKEND DEPLOYMENT ───────────────────────── #
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: backend
+  name: flask-backend
   namespace: backend
+  labels:                 # ← one source of truth for the label
+    app: flask-backend
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: backend
+      app: flask-backend
   template:
     metadata:
       labels:
-        app: backend
+        app: flask-backend
     spec:
-      serviceAccountName: secrets-reader 
+      serviceAccountName: flask-backend-sa
+      # If you created the NodeGroup with
+      #   --labels nodegroup-type=backend
+      # then this selector is correct; otherwise adjust.
       nodeSelector:
         nodegroup-type: backend
+
       containers:
-      - name: backend
-        image: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/backend:latest
-        ports:
-        - containerPort: 5000
-        env:
-        - name: DB_SECRET_ID        # looked-up at runtime
-          value: employee-portal-dbcred
-        - name: JWT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: backend-secrets
-              key: jwt  
-        resources:
-          requests:
-            cpu: "250m"
-            memory: "256Mi"
-          limits:
-            cpu: "500m"
-            memory: "512Mi"
+        - name: backend
+          image: 211125325699.dkr.ecr.ap-south-1.amazonaws.com/support-portal-flask-backend:v3
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          env:
+            - name: DB_SECRET_ARN
+              value: arn:aws:secretsmanager:ap-south-1:211125325699:secret:support-portal-db-admin-credentials1-85xh1t
+            - name: AWS_REGION
+              value: ap-south-1
+
+          # OPTIONAL BUT RECOMMENDED
+          livenessProbe:
+            httpGet:
+              path: /healthz     # adjust to your endpoint
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+# ─────────────────────────── 2) CLUSTER-IP SERVICE ─────────────────────── #
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: backend
+  name: flask-backend
   namespace: backend
 spec:
   selector:
-    app: backend
+    app: flask-backend
   ports:
-    - port: 5000
-      targetPort: 5000
+    - name: http
+      port: 80          # <- the port other pods will hit
+      targetPort: 5000  # <- your containerPort
+  type: ClusterIP

@@ -21,6 +21,7 @@ module "vpc" {
   azs                  = var.azs
   public_subnet_cidrs  = var.public_subnet_cidrs
   private_subnet_cidrs = var.private_subnet_cidrs
+  cluster_name         = var.cluster_name
 }
 
 module "security_group" {
@@ -66,8 +67,8 @@ module "iam" {
   cluster_name      = module.eks.eks_cluster_name
   oidc_provider_arn = module.eks.cluster_oidc_provider_arn
   oidc_provider_url = module.eks.cluster_oidc_provider_url # ← NEW
-
   depends_on = [module.eks]
+
 }
 
 

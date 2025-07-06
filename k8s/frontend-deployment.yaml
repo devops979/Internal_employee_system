@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/frontend:latest
+        image: 211125325699.dkr.ecr.ap-south-1.amazonaws.com/support-portal-react-frontend:v2
         resources:
           requests:
             cpu: "100m"
@@ -24,10 +24,10 @@ spec:
             cpu: "500m"
             memory: "256Mi"
         ports:
-        - containerPort: 3000
+        - containerPort: 80
         env:
           - name: REACT_APP_API_URL
-            value: https://<YOUR_DOMAIN>/api  
+            value: http://flask-backend.backend.svc.cluster.local  
 ---
 apiVersion: v1
 kind: Service
@@ -39,4 +39,5 @@ spec:
     app: frontend
   ports:
     - port: 80
-      targetPort: 3000
+      targetPort: 80
+

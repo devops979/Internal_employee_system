@@ -117,3 +117,4 @@ def delete_employee(emp_id):
 @api.get("/healthz")
 def health():
     return {"status": "ok"}, 200
+

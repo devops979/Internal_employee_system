@@ -25,6 +25,10 @@ resource "aws_subnet" "public" {
 
   tags = {
     Name = "${var.name}-public-${each.key}"
+
+    # ─────── ALB discovery ───────
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"  # tell the LB controller this subnet belongs to the cluster
+    "kubernetes.io/role/elb"                     = "1"       # mark subnet for public ALBs (internet-facing)
   }
 }
 

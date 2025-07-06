@@ -21,27 +21,24 @@ from flask_jwt_extended import JWTManager
 from prometheus_flask_exporter import PrometheusMetrics
 from sqlalchemy.exc import OperationalError
 
-from config import Config           # default values (can be overridden below)
+from config import Config          # default values (can be overridden below)
 from models import db
-from routes import api
+from routes import api             # <-- blueprint with /api/* endpoints
 
 try:
     from flask_cors import CORS
 except ModuleNotFoundError:
     CORS = None
 
-# --------------------------------------------------------------------------- #
-# Constants
-# --------------------------------------------------------------------------- #
+
+# ─────────────────────────── constants ────────────────────────────
 MAX_RETRIES      = int(os.getenv("DB_CONN_RETRIES", 10))
 RETRY_DELAY_SECS = int(os.getenv("DB_CONN_DELAY", 3))
 
 
-# --------------------------------------------------------------------------- #
-# Helpers
-# --------------------------------------------------------------------------- #
+# ─────────────────────────── helpers ──────────────────────────────
 def _load_rds_secret() -> dict:
-    """Fetch JSON secret from Secrets Manager and return as dict."""
+    """Fetch JSON secret from AWS Secrets Manager."""
     secret_arn = os.environ.get("DB_SECRET_ARN")
     region     = os.environ.get("AWS_REGION", "ap-south-1")
 
@@ -60,19 +57,16 @@ def _build_db_uri(secret: dict) -> str:
     host     = secret["host"]
     port     = secret.get("port", 3306)
     dbname   = secret["dbname"]
-
     return f"mysql+pymysql://{user}:{password}@{host}:{port}/{dbname}"
 
 
-# --------------------------------------------------------------------------- #
-# Application factory
-# --------------------------------------------------------------------------- #
+# ─────────────────────── application factory ──────────────────────
 def create_app(config_object: object = Config) -> Flask:
     """Create and configure the Flask application."""
     app = Flask(__name__)
     app.config.from_object(config_object)
 
-    # ---------- Inject DB URI from Secrets Manager -------------------------
+    # ---- inject DB URI from Secrets Manager ----------------------
     try:
         secret = _load_rds_secret()
         app.config["SQLALCHEMY_DATABASE_URI"] = _build_db_uri(secret)
@@ -80,16 +74,16 @@ def create_app(config_object: object = Config) -> Flask:
         logging.critical("Could not load DB secret: %s", exc)
         raise
 
-    # ---------- Extensions --------------------------------------------------
+    # ---- extensions ---------------------------------------------
     app.config.setdefault("SQLALCHEMY_ENGINE_OPTIONS", {"pool_pre_ping": True})
     db.init_app(app)
     JWTManager(app)
-    PrometheusMetrics(app)  # /metrics
+    PrometheusMetrics(app)  # exposes /metrics
 
     if CORS:
         CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-    # ---------- Ensure DB reachable ----------------------------------------
+    # ---- ensure DB reachable ------------------------------------
     attempts = 0
     while attempts < MAX_RETRIES:
         try:
@@ -107,14 +101,18 @@ def create_app(config_object: object = Config) -> Flask:
         logging.critical("Giving up: DB unreachable after retries.")
         raise
 
-    # ---------- Blueprints --------------------------------------------------
+    # ---- blueprints & health probe ------------------------------
     app.register_blueprint(api)
+
+    @app.route("/healthz")              # single universal probe
+    def health_check():
+        return "OK", 200
 
     return app
 
 
-# Gunicorn entry-point
+# ────────────────────── gunicorn entry-point ──────────────────────
 app = create_app()
 
-if __name__ == "__main__":          # local dev only
+if __name__ == "__main__":             # local dev only
     app.run(host="0.0.0.0", port=5000, debug=True)
