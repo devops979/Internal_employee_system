@@ -104,20 +104,5 @@ jobs:
           react=$ECR_REGISTRY/support-portal-flask-frontend:$IMAGE_TAG
 
         # Ingress & any other static manifests
-        kubectl apply -f k8s/frontend-ingress.yaml
-        kubectl apply -f k8s/backend-ingress.yaml
+        kubectl apply -f k8s/ingress.yaml
 
-    - name: Show ALB DNS
-      id: alb-output
-      run: |
-        ALB_DNS=$(kubectl get ingress support-portal-ing -n frontend -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-        echo "ALB DNS: $ALB_DNS"
-        echo "alb_dns=$ALB_DNS" >> $GITHUB_OUTPUT
-  
-    - name: Output deployment information
-      if: always()
-      run: |
-        echo "Deployment completed successfully!"
-        echo "Frontend image: ${{ env.FRONTEND_IMAGE }}"
-        echo "Backend image: ${{ env.BACKEND_IMAGE }}"
-        echo "ALB endpoint: ${{ steps.alb-output.outputs.alb_dns }}"
