@@ -13,7 +13,7 @@ variable "sa_namespace" {
 }
 variable "sa_name" {
   type    = string
-  default = "secrets-reader"
+  default = "flask-backend-sa"
 }
 variable "secret_arn" {
   type    = string

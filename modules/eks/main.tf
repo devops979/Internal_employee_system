@@ -72,19 +72,40 @@ resource "aws_eks_cluster" "this" {
 }
 
 
+resource "aws_launch_template" "backend_lt" {
+  name_prefix   = "${var.cluster_name}-backend-"
+  instance_type = var.backend_instance_type
+
+  vpc_security_group_ids = [
+    var.backend_sg_id,                      # ← custom SG
+    aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
+  ]
+
+  tag_specifications {
+    resource_type = "instance"
+    tags          = { Project = var.project }
+  }
+}
+
+
+
+
 resource "aws_eks_node_group" "backend_nodes" {
   cluster_name    = aws_eks_cluster.this.name
   node_group_name = "backend-nodes"
   node_role_arn   = aws_iam_role.node.arn
   subnet_ids      = var.private_subnet_ids
 
+  launch_template {
+    id      = aws_launch_template.backend_lt.id
+    version = aws_launch_template.backend_lt.latest_version
+  }
+
   scaling_config {
     desired_size = 2
     max_size     = 3
     min_size     = 1
   }
-
-  instance_types = [var.backend_instance_type]
 
   tags = { Project = var.project }
 
@@ -94,6 +115,7 @@ resource "aws_eks_node_group" "backend_nodes" {
     aws_iam_role_policy_attachment.ecr_read
   ]
 }
+
 
 resource "aws_iam_openid_connect_provider" "this" {
   url             = aws_eks_cluster.this.identity[0].oidc[0].issuer

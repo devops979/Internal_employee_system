@@ -23,3 +23,10 @@ variable "backend_instance_type" {
   type    = string
   default = "t3.medium"
 }
+
+
+variable "backend_sg_id" {
+  type        = string
+  description = "Security group ID for backend nodes (Flask pods)"
+  
+}
