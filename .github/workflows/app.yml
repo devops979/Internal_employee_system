@@ -89,7 +89,7 @@ jobs:
     - name: Deploy manifests
       working-directory: k8s
       run: |
-        kubectl apply -f namespaces.yaml
+        kubectl apply -f namespace.yaml
         kubectl apply -f serviceaccount.yaml
         
         kubectl set image deployment/flask-backend -n backend \
