@@ -1,5 +1,5 @@
 server:
   service:
-    type: LoadBalancer
+    type: NodePort
 alertmanager:
   enabled: false
