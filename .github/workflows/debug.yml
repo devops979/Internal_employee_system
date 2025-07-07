@@ -78,7 +78,15 @@ jobs:
       run: |
         kubectl -n monitoring patch svc kube-prometheus-stack-grafana \
           --type merge \
-          -p '{"spec":{"type":"LoadBalancer"}}'
+          -p '{
+                "metadata": {
+                  "annotations": {
+                    "service.beta.kubernetes.io/aws-load-balancer-type": "nlb",
+                    "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type": "ip"
+                  }
+                },
+                "spec": { "type": "LoadBalancer" }
+              }'
 
     - name: Wait for Grafana external IP / hostname
       run: |
