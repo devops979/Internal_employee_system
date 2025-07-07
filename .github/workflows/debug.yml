@@ -74,32 +74,14 @@ jobs:
           -f monitoring/prometheus-values.yaml
 
     # ────────────────────────  EXPOSE GRAFANA  ──────────────────────────
-    - name: Expose Grafana via LoadBalancer
+    - name: Expose Grafana as LoadBalancer
       run: |
         kubectl -n monitoring patch svc kube-prometheus-stack-grafana \
-          --type merge \
-          -p '{
-                "metadata": {
-                  "annotations": {
-                    "service.beta.kubernetes.io/aws-load-balancer-type": "nlb",
-                    "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type": "ip"
-                  }
-                },
-                "spec": { "type": "LoadBalancer" }
-              }'
-
-    - name: Wait for Grafana external IP / hostname
-      run: |
-        echo "Waiting up to 2 minutes for an external IP..."
-        for i in {1..24}; do
-          OUT=$(kubectl -n monitoring get svc kube-prometheus-stack-grafana \
-            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
-          if [ -n "$OUT" ]; then
-            echo "Grafana is available at: http://$OUT"
-            break
-          fi
-          sleep 5
-        done
+          --type merge -p '{"spec":{"type":"LoadBalancer"}}'
+        kubectl -n monitoring annotate svc kube-prometheus-stack-grafana \
+          "service.beta.kubernetes.io/aws-load-balancer-type=nlb" \
+          "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type=ip" \
+          --overwrite
 
     - name: Show Grafana admin password
       run: |
