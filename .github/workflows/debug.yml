@@ -94,3 +94,8 @@ jobs:
       - name: Apply Grafana dashboards
         run: |
           kubectl apply -f monitoring/grafana-dashboards.yaml
+          
+      - name: list the monitoring pods
+        run: |
+          kubectl get po -n monitoring
+          kubectl get svc -n monitoring
