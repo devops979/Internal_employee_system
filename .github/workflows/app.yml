@@ -87,7 +87,7 @@ jobs:
           --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"="${{ env.ALB_ROLE_ARN }}"
 
     - name: Deploy manifests
-      working-directory: k8s
+      working-directory: ./k8s
       run: |
         kubectl apply -f namespace.yaml
         kubectl apply -f serviceaccount.yaml
