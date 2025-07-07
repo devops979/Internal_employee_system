@@ -1,0 +1,61 @@
+name: Debugging the environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Choose the Terraform action'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+          - apply
+          - destroy
+
+env:
+  AWS_REGION: ap-south-1
+  IMAGE_TAG: ${{ github.sha }}
+  ECR_REGISTRY: 211125325699.dkr.ecr.ap-south-1.amazonaws.com  # Use actual value
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      EKS_CLUSTER_NAME: support-eks
+      ALB_ROLE_ARN: ${{ vars.AWS_ALB_CONTROLLER_ROLE_ARN }}
+
+    steps:
+    - uses: actions/checkout@v4
+      
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ vars.AWS_GITHUB_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}  # Fixed region consistency
+
+    - uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.32.0'
+        
+    - name: Verify EKS Cluster Access
+      run: |
+        aws eks describe-cluster --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+    - name: Debuging the cluster
+      run: |
+        kubectl get po -n frontend
+        kubectl get po -n backend
+        kubectl get svc -n frontend
+        kubectl get svc -n backend
+        kubectl get ing -n frontend
+        kubectl get ing -n backend
+         
+            
