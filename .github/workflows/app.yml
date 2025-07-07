@@ -89,13 +89,15 @@ jobs:
     - name: Deploy manifests
       working-directory: ./k8s
       run: |
+        # Inject the new image tag into the manifest
+        sed -i "s|image:.*|image: ${{ env.ECR_REGISTRY }}/support-portal-flask-backend:${{ env.IMAGE_TAG }}|g" backend-deployment.yaml
+        sed -i "s|image:.*|image: ${{ env.ECR_REGISTRY }}/support-portal-react-backend:${{ env.IMAGE_TAG }}|g" frontend-deployment.yaml
+            
         kubectl apply -f namespace.yaml
         kubectl apply -f serviceaccount.yaml
-        
-        kubectl set image deployment/flask-backend -n backend \
-          flask=${{ env.ECR_REGISTRY }}/support-portal-flask-backend:${{ env.IMAGE_TAG }}
-          
-        kubectl set image deployment/frontend -n frontend \
-          react=${{ env.ECR_REGISTRY }}/support-portal-react-frontend:${{ env.IMAGE_TAG }}
-          
-        kubectl apply -f ingress.yaml
+
+        kubectl apply -f backend-deployment.yaml
+        kubectl apply -f frontend-deployment.yaml
+      
+        kubectl apply -f frontend-ingress.yaml
+        kubectl apply -f backend-ingress.yaml
