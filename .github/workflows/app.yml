@@ -60,9 +60,14 @@ jobs:
     - uses: azure/setup-kubectl@v3
       with:
         version: 'v1.32.0'
-    - name: Configure kubectl for EKS
+        
+    - name: Verify EKS Cluster Access
       run: |
-        aws eks update-kubeconfig --name  $EKS_CLUSTER_NAME --region $AWS_REGION
+        aws eks describe-cluster --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
 
       # -------- Install / upgrade Helm + repos ------------------------------
     - name: Set up Helm
