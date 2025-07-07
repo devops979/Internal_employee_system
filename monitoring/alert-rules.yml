@@ -1,0 +1,18 @@
+groups:
+- name: custom-alerts
+  rules:
+  - alert: HighDBConnections
+    expr: db_connection_count > 100
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High DB connection count detected"
+
+  - alert: PodRestartRateHigh
+    expr: increase(kube_pod_container_status_restarts_total[5m]) > 5
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Pod restart rate is high"
