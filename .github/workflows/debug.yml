@@ -51,7 +51,6 @@ jobs:
 
     - name: Debuging the cluster
       run: |
-        kubectl rollout restart deployment aws-load-balancer-controller -n kube-system
         kubectl get po -n frontend
         kubectl get po -n backend
         kubectl get svc -n frontend
@@ -59,7 +58,8 @@ jobs:
         kubectl get svc -n backend
         kubectl get ing -n frontend
         kubectl get ing -n backend
-        kubectl get po -n kube-system
+        kubectl get po -n kube-system 
+        kubectl get po -n kube-system 
         kubectl get serviceaccount aws-load-balancer-controller -n kube-system -o yaml
         kubectl get po -n frontend
         kubectl get po -n backend
