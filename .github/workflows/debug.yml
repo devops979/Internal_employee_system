@@ -48,14 +48,16 @@ jobs:
     - name: Update kubeconfig
       run: |
         aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+    - name: Deploy manifests
+      working-directory: ./k8s
+      run: |
+        kubectl apply -f backend-deployment.yaml
 
     - name: Debuging the cluster
       run: |
         kubectl get po -n frontend
         kubectl get po -n backend
         kubectl get svc -n frontend
-        kubectl describe po flask-backend-6cd46575df-4n2bc -n backend
-        kubectl logs flask-backend-6cd46575df-4n2bc -n backend
         kubectl get no
         kubectl get svc -n backend
         kubectl get ing -n frontend
