@@ -15,19 +15,18 @@ on:
 env:
   AWS_REGION: ap-south-1
   IMAGE_TAG: ${{ github.sha }}
+  ECR_REGISTRY: 211125325699.dkr.ecr.ap-south-1.amazonaws.com  # Use actual value
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write      # OIDC to assume role
+      id-token: write
       contents: read
 
     env:
-      ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com
-      AWS_REGION: ${{ vars.AWS_REGION }}
-      EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
-      ALB_ROLE_ARN:  ${{ vars.AWS_ALB_CONTROLLER_ROLE_ARN }}
+      EKS_CLUSTER_NAME: support-eks
+      ALB_ROLE_ARN: ${{ vars.AWS_ALB_CONTROLLER_ROLE_ARN }}
 
     steps:
     - uses: actions/checkout@v4
@@ -36,26 +35,22 @@ jobs:
       uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: ${{ vars.AWS_GITHUB_ROLE_ARN }}
-        aws-region: "us-east-1"
+        aws-region: ${{ env.AWS_REGION }}  # Fixed region consistency
 
     - name: Login to Amazon ECR
       uses: aws-actions/amazon-ecr-login@v2
 
-
     - name: Build & push Flask (backend)
       run: |
-        aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 211125325699.dkr.ecr.ap-south-1.amazonaws.com
         docker build -t flask-backend ./backend
-        docker tag  flask-backend:latest $ECR_REGISTRY/support-portal-flask-backend:$IMAGE_TAG
-        docker push $ECR_REGISTRY/support-portal-flask-backend:$IMAGE_TAG
+        docker tag flask-backend:latest ${{ env.ECR_REGISTRY }}/support-portal-flask-backend:${{ env.IMAGE_TAG }}
+        docker push ${{ env.ECR_REGISTRY }}/support-portal-flask-backend:${{ env.IMAGE_TAG }}
 
-    # ───────────────────────── 4. Build & push React ───────────────
     - name: Build & push React (frontend)
       run: |
-        aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 211125325699.dkr.ecr.ap-south-1.amazonaws.com
         docker build -t react-frontend ./frontend
-        docker tag  react-frontend:latest $ECR_REGISTRY/support-portal-react-frontend:$IMAGE_TAG
-        docker push $ECR_REGISTRY/support-portal-react-frontend:$IMAGE_TAG
+        docker tag react-frontend:latest ${{ env.ECR_REGISTRY }}/support-portal-react-frontend:${{ env.IMAGE_TAG }}
+        docker push ${{ env.ECR_REGISTRY }}/support-portal-react-frontend:${{ env.IMAGE_TAG }}
       
     - uses: azure/setup-kubectl@v3
       with:
@@ -69,7 +64,6 @@ jobs:
       run: |
         aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
 
-      # -------- Install / upgrade Helm + repos ------------------------------
     - name: Set up Helm
       uses: azure/setup-helm@v4
 
@@ -78,36 +72,30 @@ jobs:
         helm repo add eks https://aws.github.io/eks-charts
         helm repo update
 
-      # -------- Upgrade / install ALB controller ----------------------------
     - name: Apply AWS LB Controller
       run: |
         helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
           --namespace kube-system \
-          --create-namespace \
-          --set clusterName=support-eks \
-          --set region=ap-south-1 \
+          --set clusterName=${{ env.EKS_CLUSTER_NAME }} \
+          --set region=${{ env.AWS_REGION }} \
           --set vpcId=$(aws eks describe-cluster \
-                         --name support-eks \
+                         --name ${{ env.EKS_CLUSTER_NAME }} \
                          --query 'cluster.resourcesVpcConfig.vpcId' \
                          --output text) \
           --set serviceAccount.create=true \
           --set serviceAccount.name=aws-load-balancer-controller \
-          --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"="${ALB_ROLE_ARN}"
+          --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"="${{ env.ALB_ROLE_ARN }}"
 
     - name: Deploy manifests
       working-directory: k8s
       run: |
-        # Create namespaces (idempotent)
-        kubectl apply -f k8s/namespaces.yaml
-        kubectl apply -f k8s/serviceaccount.yaml
-
-        # Patch images with the new tag (no manifest edits needed)
-        kubectl set image deployment/flask-backend  -n backend  \
-          flask=$ECR_REGISTRY/support-portal-flask-backend:$IMAGE_TAG
-
+        kubectl apply -f namespaces.yaml
+        kubectl apply -f serviceaccount.yaml
+        
+        kubectl set image deployment/flask-backend -n backend \
+          flask=${{ env.ECR_REGISTRY }}/support-portal-flask-backend:${{ env.IMAGE_TAG }}
+          
         kubectl set image deployment/frontend -n frontend \
-          react=$ECR_REGISTRY/support-portal-flask-frontend:$IMAGE_TAG
-
-        # Ingress & any other static manifests
-        kubectl apply -f k8s/ingress.yaml
-
+          react=${{ env.ECR_REGISTRY }}/support-portal-react-frontend:${{ env.IMAGE_TAG }}
+          
+        kubectl apply -f ingress.yaml
