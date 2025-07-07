@@ -83,6 +83,23 @@ jobs:
             --namespace monitoring \
             -f monitoring/grafana-values.yaml
 
+      - name: uninstalling grafana
+        run: |
+          helm uninstall grafana -n monitoring  
+
+      - name: Expose Grafana via LoadBalancer
+        run: |
+          kubectl -n monitoring patch svc kube-prometheus-stack-grafana \
+            -p '{"spec":{"type":"LoadBalancer"}}'
+  
+      - name: Show Grafana external URL & admin password
+        run: |
+          echo "Waiting for external IP..."
+          kubectl -n monitoring get svc kube-prometheus-stack-grafana --watch --timeout=2m
+          echo "Admin password:"
+          kubectl -n monitoring get secret kube-prometheus-stack-grafana \
+            -o jsonpath='{.data.admin-password}' | base64 -d && echo
+
       - name: Apply custom alerts
         run: |
           kubectl apply -f monitoring/alert-rules.yaml

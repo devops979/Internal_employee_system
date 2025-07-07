@@ -10,47 +10,66 @@ data:
     {
       "title": "Kubernetes Cluster Monitoring",
       "schemaVersion": 16,
-      "version": 1,
+      "version": 2,
       "panels": [
         {
-          "type": "graph",
-          "title": "CPU Usage",
+          "type": "timeseries",
+          "title": "CPU Usage by Pod",
           "targets": [
-            {
-              "expr": "sum(rate(container_cpu_usage_seconds_total[5m])) by (pod)",
-              "format": "time_series"
-            }
+            { "expr": "sum(rate(container_cpu_usage_seconds_total[5m])) by (pod)" }
           ]
         },
         {
-          "type": "graph",
-          "title": "Memory Usage",
+          "type": "timeseries",
+          "title": "Memory Usage by Pod",
           "targets": [
-            {
-              "expr": "sum(container_memory_usage_bytes) by (pod)",
-              "format": "time_series"
-            }
+            { "expr": "sum(container_memory_usage_bytes) by (pod)" }
           ]
         },
         {
-          "type": "graph",
+          "type": "timeseries",
           "title": "Pod Restarts",
           "targets": [
+            { "expr": "increase(kube_pod_container_status_restarts_total[5m])" }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "DB Connection Count",
+          "targets": [
+            { "expr": "db_connection_count" }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Node CPU Usage (%)",
+          "targets": [
             {
-              "expr": "increase(kube_pod_container_status_restarts_total[5m])",
-              "format": "time_series"
+              "expr": "100 - (avg by(instance)(rate(node_cpu_seconds_total{mode='idle'}[5m])) * 100)",
+              "legendFormat": "{{instance}}"
             }
           ]
         },
         {
-          "type": "graph",
-          "title": "DB Connection Count",
+          "type": "timeseries",
+          "title": "Node Memory Usage (%)",
           "targets": [
             {
-              "expr": "db_connection_count",
-              "format": "time_series"
+              "expr": "(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100",
+              "legendFormat": "{{instance}}"
             }
           ]
+        },
+        {
+          "type": "heatmap",
+          "title": "Pod Restarts Heatmap (last 24 h)",
+          "targets": [
+            {
+              "expr": "increase(kube_pod_container_status_restarts_total[1h])",
+              "legendFormat": "{{pod}}"
+            }
+          ],
+          "heatmap": {}
         }
       ]
     }

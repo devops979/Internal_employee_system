@@ -5,20 +5,22 @@ metadata:
   namespace: monitoring
 spec:
   groups:
-    - name: custom-alerts
-      rules:
-        - alert: HighDBConnections
-          expr: db_connection_count > 100
-          for: 5m
-          labels:
-            severity: warning
-          annotations:
-            summary: "High DB connection count detected"
+  - name: custom-alerts
+    rules:
+    - alert: HighDBConnections
+      expr: max_over_time(db_connection_count[5m]) > 100
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary:  "DB connection count >100 for 10 minutes"
+        runbook:  "Check connection pool / slow queries"
 
-        - alert: PodRestartRateHigh
-          expr: increase(kube_pod_container_status_restarts_total[5m]) > 5
-          for: 5m
-          labels:
-            severity: critical
-          annotations:
-            summary: "Pod restart rate is high"
+    - alert: PodRestartRateHigh
+      expr: rate(kube_pod_container_status_restarts_total[5m]) > 0.02
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary:  "Pod restart rate > 0.02 r/s"
+        runbook:  "Inspect pod logs & events"
