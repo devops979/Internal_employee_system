@@ -8,9 +8,7 @@ on:
         required: true
         default: "apply"
         type: choice
-        options:
-          - apply
-          - destroy
+        options: [apply, destroy]
 
 env:
   AWS_REGION: ap-south-1
@@ -18,7 +16,7 @@ env:
   ECR_REGISTRY: 211125325699.dkr.ecr.ap-south-1.amazonaws.com
 
 jobs:
-  build-and-deploy:
+  manage-monitoring:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -29,7 +27,7 @@ jobs:
       ALB_ROLE_ARN: ${{ vars.AWS_ALB_CONTROLLER_ROLE_ARN }}
 
     steps:
-    # ──────────────────────────────  SETUP  ──────────────────────────────
+    # ──────────────────────────────  SHARED SETUP  ──────────────────────────────
     - uses: actions/checkout@v4
 
     - name: Configure AWS credentials
@@ -39,78 +37,56 @@ jobs:
         aws-region: ${{ env.AWS_REGION }}
 
     - uses: azure/setup-kubectl@v3
-      with:
-        version: "v1.32.0"
-
-    - name: Verify EKS Cluster Access
-      run: aws eks describe-cluster --name $EKS_CLUSTER_NAME --region $AWS_REGION
+      with: { version: "v1.32.0" }
 
     - name: Update kubeconfig
       run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
 
-    # ───────────────────────────  CLUSTER CHECKS  ────────────────────────
-    - name: Quick cluster inventory
-      run: |
-        kubectl get ns
-        kubectl get po -n frontend
-        kubectl get po -n backend
-        kubectl get svc -n frontend
-        kubectl get svc -n backend
-        kubectl get ing -A
-        kubectl get no
-    # ──────────────────────────  HELM REPOSITORIES  ─────────────────────
+    # ──────────────────────────────  APPLY STEPS  ───────────────────────────────
     - name: Add Helm repos
+      if: ${{ github.event.inputs.action == 'apply' }}
       run: |
         helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
         helm repo add grafana https://grafana.github.io/helm-charts
         helm repo update
 
-    # ────────────────────────  PROMETHEUS STACK  ────────────────────────
     - name: Install / upgrade kube-prometheus-stack
+      if: ${{ github.event.inputs.action == 'apply' }}
       run: |
         helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
           --namespace monitoring --create-namespace \
           -f monitoring/prometheus-values.yaml
 
-
     - name: Show Grafana admin password
+      if: ${{ github.event.inputs.action == 'apply' }}
       run: |
         echo -n "Admin password: "
         kubectl -n monitoring get secret kube-prometheus-stack-grafana \
           -o jsonpath='{.data.admin-password}' | base64 -d && echo
 
-    # ────────────────────────  CUSTOM RULES / DASHBOARD  ────────────────
     - name: Apply custom alerts
+      if: ${{ github.event.inputs.action == 'apply' }}
       run: kubectl apply -f monitoring/alert-rules.yaml
 
     - name: Apply Grafana dashboards
+      if: ${{ github.event.inputs.action == 'apply' }}
       run: kubectl apply -f monitoring/grafana-dashboards.yaml
 
-    # ─────────────────────────  FINAL VISIBILITY  ───────────────────────
+    # ─────────────────────────────  DESTROY STEPS  ──────────────────────────────
+    - name: Uninstall kube-prometheus-stack & delete namespaces
+      if: ${{ github.event.inputs.action == 'destroy' }}
+      run: |
+        echo "Uninstalling kube-prometheus-stack and deleting namespaces…"
+        if helm status kube-prometheus-stack -n monitoring >/dev/null 2>&1; then
+          helm uninstall kube-prometheus-stack -n monitoring
+        fi
+        kubectl delete ns monitoring frontend backend ingress-nginx --ignore-not-found
+
+    # ─────────────────────────  FINAL VISIBILITY (BOTH MODES)  ──────────────────
     - name: List monitoring pods & services
       run: |
-        kubectl get pods -n monitoring
-        kubectl get svc  -n monitoring
-        kubectl get all -n monitoring
-        kubectl -n monitoring get po -l app.kubernetes.io/component=prometheus
-        kubectl -n monitoring get endpoints kube-prometheus-stack-prometheus -o wide
-        kubectl describe pod prometheus-kube-prometheus-stack-prometheus-0 -n monitoring
-        kubectl describe pod alertmanager-kube-prometheus-stack-alertmanager-0 -n monitoring
-
-    #========================Delete applications============================
-    - name: Perform Action
-      run: |
-        if [ "$ACTION" == "destroy" ]; then
-          helm uninstall kube-prometheus-stack
-          kubectl delete ns monitoring
-          kubectl delete ns frontend
-          kubectl delete ns backend
-          kubectl delete ns ingress-nginx
-        else
-          echo "Invalid action specified: $ACTION"
-          exit 1
-        fi
-
-    - name: Recheck the resources
-      run: |  
-        kubectl get all --all-namespaces
+        echo "=== Cluster objects after ${ {github.event.inputs.action} } ==="
+        kubectl get ns
+        kubectl get all -n monitoring || true
+        kubectl get all -n frontend   || true
+        kubectl get all -n backend    || true
