@@ -99,16 +99,17 @@ jobs:
 
     #========================Delete applications============================
     - name: Perform Action
-        run: |
-            if [ "$ACTION" == "destroy" ]; then
-              kubectl delete ns monitoring
-              kubectl delete ns frontend
-              kubectl delete ns backend
-              kubectl delete ns ingress-nginx
-            else
-              echo "Invalid action specified: $ACTION"
-              exit 1
-            fi
+      run: |
+        if [ "$ACTION" == "destroy" ]; then
+          helm uninstall kube-prometheus-stack
+          kubectl delete ns monitoring
+          kubectl delete ns frontend
+          kubectl delete ns backend
+          kubectl delete ns ingress-nginx
+        else
+          echo "Invalid action specified: $ACTION"
+          exit 1
+        fi
 
     - name: Recheck the resources
       run: |  
