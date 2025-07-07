@@ -15,7 +15,7 @@ on:
 env:
   AWS_REGION: ap-south-1
   IMAGE_TAG: ${{ github.sha }}
-  ECR_REGISTRY: 211125325699.dkr.ecr.ap-south-1.amazonaws.com  # Use actual value
+  ECR_REGISTRY: 211125325699.dkr.ecr.ap-south-1.amazonaws.com
 
 jobs:
   build-and-deploy:
@@ -29,40 +29,63 @@ jobs:
       ALB_ROLE_ARN: ${{ vars.AWS_ALB_CONTROLLER_ROLE_ARN }}
 
     steps:
-    - uses: actions/checkout@v4
-      
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ vars.AWS_GITHUB_ROLE_ARN }}
-        aws-region: ${{ env.AWS_REGION }}  # Fixed region consistency
+      - uses: actions/checkout@v4
 
-    - uses: azure/setup-kubectl@v3
-      with:
-        version: 'v1.32.0'
-        
-    - name: Verify EKS Cluster Access
-      run: |
-        aws eks describe-cluster --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_GITHUB_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
-    - name: Update kubeconfig
-      run: |
-        aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+      - uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.32.0'
 
-    - name: Debuging the cluster
-      run: |
-        kubectl get ns
-        kubectl get po -n frontend
-        kubectl get po -n backend
-        kubectl get svc -n frontend
-        kubectl get no
-        kubectl get svc -n backend
-        kubectl get ing -n frontend
-        kubectl get ing -n backend
-        kubectl get po -n kube-system 
-        kubectl get po -n kube-system 
-        kubectl get po -n frontend
-        kubectl get po -n backend
+      - name: Verify EKS Cluster Access
+        run: |
+          aws eks describe-cluster --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
 
-         
-            
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+      - name: Debugging the cluster
+        run: |
+          kubectl get ns
+          kubectl get po -n frontend
+          kubectl get po -n backend
+          kubectl get svc -n frontend
+          kubectl get no
+          kubectl get svc -n backend
+          kubectl get ing -n frontend
+          kubectl get ing -n backend
+          kubectl get po -n kube-system
+          kubectl get po -n frontend
+          kubectl get po -n backend
+
+      - name: Add Helm repos
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo add grafana https://grafana.github.io/helm-charts
+          helm repo update
+
+      - name: Install Prometheus
+        run: |
+          kubectl create namespace monitoring || true
+          helm install prom prometheus-community/prometheus \
+            --namespace monitoring \
+            -f monitoring/prometheus-values.yaml
+
+      - name: Install Grafana
+        run: |
+          helm upgrade --install grafana grafana/grafana \
+            --namespace monitoring \
+            -f monitoring/grafana-values.yaml
+
+      - name: Apply custom alerts
+        run: |
+          kubectl apply -f monitoring/alert-rules.yaml
+
+      - name: Apply Grafana dashboards
+        run: |
+          kubectl apply -f monitoring/grafana-dashboards.yaml
