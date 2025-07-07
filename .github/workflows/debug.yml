@@ -72,15 +72,6 @@ jobs:
           --namespace monitoring --create-namespace \
           -f monitoring/prometheus-values.yaml
 
-    # ────────────────────────  EXPOSE GRAFANA  ──────────────────────────
-    - name: Expose Grafana as LoadBalancer
-      run: |
-        kubectl -n monitoring patch svc kube-prometheus-stack-grafana \
-          --type merge -p '{"spec":{"type":"LoadBalancer"}}'
-        kubectl -n monitoring annotate svc kube-prometheus-stack-grafana \
-          "service.beta.kubernetes.io/aws-load-balancer-type=nlb" \
-          "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type=ip" \
-          --overwrite
 
     - name: Show Grafana admin password
       run: |
