@@ -85,7 +85,7 @@ jobs:
     # ─────────────────────────  FINAL VISIBILITY (BOTH MODES)  ──────────────────
     - name: List monitoring pods & services
       run: |
-        echo "=== Cluster objects after ${ {github.event.inputs.action} } ==="
+        echo "=== Cluster objects after ${{ github.event.inputs.action }} ==="
         kubectl get ns
         kubectl get all -n monitoring || true
         kubectl get all -n frontend   || true
