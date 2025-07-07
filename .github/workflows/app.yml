@@ -54,8 +54,8 @@ jobs:
       run: |
         aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 211125325699.dkr.ecr.ap-south-1.amazonaws.com
         docker build -t react-frontend ./frontend
-        docker tag  react-frontend:latest $ECR_REGISTRY/support-portal-flask-frontend:$IMAGE_TAG
-        docker push $ECR_REGISTRY/support-portal-flask-frontend:$IMAGE_TAG
+        docker tag  react-frontend:latest $ECR_REGISTRY/support-portal-react-frontend:$IMAGE_TAG
+        docker push $ECR_REGISTRY/support-portal-react-frontend:$IMAGE_TAG
       
     - uses: azure/setup-kubectl@v3
       with:
