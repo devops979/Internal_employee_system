@@ -42,6 +42,10 @@ jobs:
     - name: Update kubeconfig
       run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
 
+    - name: Install jq
+      run: sudo apt-get update && sudo apt-get install -y jq
+
+
     # ──────────────────────────────  APPLY STEPS  ───────────────────────────────
     - name: Add Helm repos
       if: ${{ github.event.inputs.action == 'apply' }}
@@ -82,6 +86,17 @@ jobs:
         fi
         kubectl delete ns monitoring frontend backend ingress-nginx --ignore-not-found
 
+    - name: Delete ECR images before destroy
+      if: ${{ github.event.inputs.action == 'destroy' }}
+      run: |
+        for repo in support-portal-flask-frontend support-portal-flask-backend; do
+          echo "Cleaning up images from $repo"
+          aws ecr list-images --repository-name $repo --query 'imageIds[*]' --output json | \
+          jq -c '.' | \
+          xargs -I {} aws ecr batch-delete-image --repository-name $repo --image-ids '{}'
+        done
+
+
     # ─────────────────────────  FINAL VISIBILITY (BOTH MODES)  ──────────────────
     - name: List monitoring pods & services
       run: |
@@ -90,3 +105,5 @@ jobs:
         kubectl get all -n monitoring || true
         kubectl get all -n frontend   || true
         kubectl get all -n backend    || true
+
+        
