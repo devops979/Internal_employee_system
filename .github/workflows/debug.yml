@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: 'Choose the Terraform action'
+        description: "Choose the Terraform action"
         required: true
-        default: 'apply'
+        default: "apply"
         type: choice
         options:
           - apply
@@ -29,86 +29,85 @@ jobs:
       ALB_ROLE_ARN: ${{ vars.AWS_ALB_CONTROLLER_ROLE_ARN }}
 
     steps:
-      - uses: actions/checkout@v4
+    # ──────────────────────────────  SETUP  ──────────────────────────────
+    - uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ vars.AWS_GITHUB_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ vars.AWS_GITHUB_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
 
-      - uses: azure/setup-kubectl@v3
-        with:
-          version: 'v1.32.0'
+    - uses: azure/setup-kubectl@v3
+      with:
+        version: "v1.32.0"
 
-      - name: Verify EKS Cluster Access
-        run: |
-          aws eks describe-cluster --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+    - name: Verify EKS Cluster Access
+      run: aws eks describe-cluster --name $EKS_CLUSTER_NAME --region $AWS_REGION
 
-      - name: Update kubeconfig
-        run: |
-          aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+    - name: Update kubeconfig
+      run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
 
-      - name: Debugging the cluster
-        run: |
-          kubectl get ns
-          kubectl get po -n frontend
-          kubectl get po -n backend
-          kubectl get svc -n frontend
-          kubectl get no
-          kubectl get svc -n backend
-          kubectl get ing -n frontend
-          kubectl get ing -n backend
-          kubectl get po -n kube-system
-          kubectl get po -n frontend
-          kubectl get po -n backend
+    # ───────────────────────────  CLUSTER CHECKS  ────────────────────────
+    - name: Quick cluster inventory
+      run: |
+        kubectl get ns
+        kubectl get po -n frontend
+        kubectl get po -n backend
+        kubectl get svc -n frontend
+        kubectl get svc -n backend
+        kubectl get ing -A
+        kubectl get no
 
-      - name: Add Helm repos
-        run: |
-          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-          helm repo add grafana https://grafana.github.io/helm-charts
-          helm repo update
+    # ──────────────────────────  HELM REPOSITORIES  ─────────────────────
+    - name: Add Helm repos
+      run: |
+        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+        helm repo add grafana https://grafana.github.io/helm-charts
+        helm repo update
 
-      - name: Install kube-prometheus-stack
-        run: |
-          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-          helm repo update
-          helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
-            --namespace monitoring --create-namespace \
-            -f monitoring/prometheus-values.yaml
+    # ────────────────────────  PROMETHEUS STACK  ────────────────────────
+    - name: Install / upgrade kube-prometheus-stack
+      run: |
+        helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+          --namespace monitoring --create-namespace \
+          -f monitoring/prometheus-values.yaml
 
-      - name: Install Grafana
-        run: |
-          helm upgrade --install grafana grafana/grafana \
-            --namespace monitoring \
-            -f monitoring/grafana-values.yaml
+    # ────────────────────────  EXPOSE GRAFANA  ──────────────────────────
+    - name: Expose Grafana via LoadBalancer
+      run: |
+        kubectl -n monitoring patch svc kube-prometheus-stack-grafana \
+          --type merge \
+          -p '{"spec":{"type":"LoadBalancer"}}'
 
-      - name: uninstalling grafana
-        run: |
-          helm uninstall grafana -n monitoring  
+    - name: Wait for Grafana external IP / hostname
+      run: |
+        echo "Waiting up to 2 minutes for an external IP..."
+        for i in {1..24}; do
+          OUT=$(kubectl -n monitoring get svc kube-prometheus-stack-grafana \
+            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
+          if [ -n "$OUT" ]; then
+            echo "Grafana is available at: http://$OUT"
+            break
+          fi
+          sleep 5
+        done
 
-      - name: Expose Grafana via LoadBalancer
-        run: |
-          kubectl -n monitoring patch svc kube-prometheus-stack-grafana \
-            -p '{"spec":{"type":"LoadBalancer"}}'
-  
-      - name: Show Grafana external URL & admin password
-        run: |
-          echo "Waiting for external IP..."
-          kubectl -n monitoring get svc kube-prometheus-stack-grafana --watch --timeout=2m
-          echo "Admin password:"
-          kubectl -n monitoring get secret kube-prometheus-stack-grafana \
-            -o jsonpath='{.data.admin-password}' | base64 -d && echo
+    - name: Show Grafana admin password
+      run: |
+        echo -n "Admin password: "
+        kubectl -n monitoring get secret kube-prometheus-stack-grafana \
+          -o jsonpath='{.data.admin-password}' | base64 -d && echo
 
-      - name: Apply custom alerts
-        run: |
-          kubectl apply -f monitoring/alert-rules.yaml
+    # ────────────────────────  CUSTOM RULES / DASHBOARD  ────────────────
+    - name: Apply custom alerts
+      run: kubectl apply -f monitoring/alert-rules.yaml
 
-      - name: Apply Grafana dashboards
-        run: |
-          kubectl apply -f monitoring/grafana-dashboards.yaml
-          
-      - name: list the monitoring pods
-        run: |
-          kubectl get po -n monitoring
-          kubectl get svc -n monitoring
+    - name: Apply Grafana dashboards
+      run: kubectl apply -f monitoring/grafana-dashboards.yaml
+
+    # ─────────────────────────  FINAL VISIBILITY  ───────────────────────
+    - name: List monitoring pods & services
+      run: |
+        kubectl get pods -n monitoring
+        kubectl get svc  -n monitoring
