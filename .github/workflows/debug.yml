@@ -58,7 +58,6 @@ jobs:
         kubectl get svc -n backend
         kubectl get ing -A
         kubectl get no
-
     # ──────────────────────────  HELM REPOSITORIES  ─────────────────────
     - name: Add Helm repos
       run: |
@@ -101,3 +100,6 @@ jobs:
       run: |
         kubectl get pods -n monitoring
         kubectl get svc  -n monitoring
+        kubectl get all -n monitoring
+        kubectl -n monitoring get po -l app.kubernetes.io/component=prometheus
+        kubectl -n monitoring get endpoints kube-prometheus-stack-prometheus -o wide
