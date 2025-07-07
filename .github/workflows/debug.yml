@@ -61,6 +61,7 @@ jobs:
         kubectl get ing -n frontend
         kubectl get ing -n backend
         kubectl get po -n kube-system
+        kubectl logs aws-load-balancer-controller-755786b546-vqdch -n kube-system
         kubectl get po -n frontend
         kubectl get po -n backend
 
