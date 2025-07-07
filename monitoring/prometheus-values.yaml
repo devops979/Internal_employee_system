@@ -1,22 +1,23 @@
-# Alertmanager enabled + pinned to EC2 nodes
+# ────────────────────────────  PROMETHEUS STACK  ────────────────────────────
+# Alertmanager enabled + pinned to *backend* node-group
 alertmanager:
   enabled: true
   alertmanagerSpec:
     nodeSelector:
-      eks.amazonaws.com/compute-type: "ec2"     # Fargate can't mount PVCs
+      nodegroup-type: backend               # ⟵ changed
     receivers:
       - name: default
         email_configs:
           - to: "devops979@gmail.com"
-  configMaps: []                                 # rules shipped separately
+  configMaps: []                            # rules shipped separately
 
-# Prometheus server pinned to EC2 nodes (for local storage)
+# Prometheus server pinned to *backend* node-group
 prometheus:
   prometheusSpec:
     nodeSelector:
-      eks.amazonaws.com/compute-type: "ec2"
+      nodegroup-type: backend               # ⟵ changed
 
-# Node exporter DaemonSet — run **only** on EC2
+# Node-exporter DaemonSet — run **only** on EC2
 nodeExporter:
   tolerations:
     - key: "node-role.kubernetes.io/control-plane"
@@ -25,16 +26,17 @@ nodeExporter:
   nodeSelector:
     eks.amazonaws.com/compute-type: "ec2"
 
-# ServiceMonitors – scrape your app pods on Fargate
+# ────────────────────────────  SERVICEMONITORS  ─────────────────────────────
+# Scrape your Fargate-based frontend / backend apps
 serviceMonitors:
   - name: backend-fargate
     selector:
       matchLabels:
         app: backend
     namespaceSelector:
-      matchNames: [backend]
+      matchNames: ["backend"]
     endpoints:
-      - port: http           # must match Service port name
+      - port: http
         path: /metrics
         interval: 30s
 
@@ -43,7 +45,7 @@ serviceMonitors:
       matchLabels:
         app: frontend
     namespaceSelector:
-      matchNames: [frontend]
+      matchNames: ["frontend"]
     endpoints:
       - port: http
         path: /metrics
