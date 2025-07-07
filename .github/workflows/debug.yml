@@ -89,12 +89,33 @@ jobs:
     - name: Delete ECR images before destroy
       if: ${{ github.event.inputs.action == 'destroy' }}
       run: |
-        for repo in support-portal-flask-frontend support-portal-flask-backend; do
-          echo "Cleaning up images from $repo"
-          aws ecr list-images --repository-name $repo --query 'imageIds[*]' --output json | \
-          jq -c '.' | \
-          xargs -I {} aws ecr batch-delete-image --repository-name $repo --image-ids '{}'
+        set -euo pipefail
+        REPOS="support-portal-flask-frontend support-portal-flask-backend"
+    
+        for repo in $REPOS; do
+          echo " Checking repo: $repo"
+    
+          # Skip if repo doesn't exist
+          if ! aws ecr describe-repositories --repository-name "$repo" --region "$AWS_REGION" >/dev/null 2>&1; then
+            echo " Repository $repo not found – skipping"
+            continue
+          fi
+    
+          # Get all images as an array (may be [])
+          images=$(aws ecr list-images --repository-name "$repo" --region "$AWS_REGION" \
+                     --query 'imageIds[*]' --output json)
+    
+          if [ "$images" = "[]" ]; then
+            echo "No images to delete in $repo"
+            continue
+          fi
+    
+          echo "Deleting $(echo "$images" | jq 'length') images"
+          # Pass the *whole array string* once; AWS CLI can delete up to 100 imageIds per call
+          aws ecr batch-delete-image --repository-name "$repo" --region "$AWS_REGION" \
+              --image-ids "$images"
         done
+
 
 
     # ─────────────────────────  FINAL VISIBILITY (BOTH MODES)  ──────────────────
@@ -105,5 +126,3 @@ jobs:
         kubectl get all -n monitoring || true
         kubectl get all -n frontend   || true
         kubectl get all -n backend    || true
-
-        
