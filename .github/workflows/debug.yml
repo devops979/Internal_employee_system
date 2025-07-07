@@ -71,15 +71,15 @@ jobs:
 
       - name: Install Prometheus
         run: |
-          helm upgrade --install prom prometheus-community/prometheus --namespace monitoring  -f monitoring/prometheus-values.yaml
+          helm uninstall prom --namespace monitoring
 
-- name: Install kube-prometheus-stack
-  run: |
-    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-    helm repo update
-    helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
-      --namespace monitoring --create-namespace \
-      -f monitoring/prometheus-values.yaml
+      - name: Install kube-prometheus-stack
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+          helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+            --namespace monitoring --create-namespace \
+            -f monitoring/prometheus-values.yaml
 
       - name: Install Grafana
         run: |
