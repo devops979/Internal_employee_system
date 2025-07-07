@@ -71,7 +71,7 @@ jobs:
 
       - name: Install Prometheus
         run: |
-          helm upgrdade install prom prometheus-community/prometheus \
+          helm upgrade install prom prometheus-community/prometheus \
             --namespace monitoring \
             -f monitoring/prometheus-values.yaml
 
