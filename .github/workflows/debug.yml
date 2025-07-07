@@ -103,3 +103,6 @@ jobs:
         kubectl get all -n monitoring
         kubectl -n monitoring get po -l app.kubernetes.io/component=prometheus
         kubectl -n monitoring get endpoints kube-prometheus-stack-prometheus -o wide
+        kubectl describe pod prometheus-kube-prometheus-stack-prometheus-0 -n monitoring
+        kubectl describe pod alertmanager-kube-prometheus-stack-alertmanager-0 -n monitoring
+
