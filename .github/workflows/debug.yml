@@ -54,7 +54,8 @@ jobs:
         kubectl get po -n frontend
         kubectl get po -n backend
         kubectl get svc -n frontend
-        kubectl describe po frontend-69d55b55cb-hz4ds -n frontend
+        kubectl describe po flask-backend-6cd46575df-4n2bc -n backend
+        kubectl logs flask-backend-6cd46575df-4n2bc -n backend
         kubectl get no
         kubectl get svc -n backend
         kubectl get ing -n frontend
