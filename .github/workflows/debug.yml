@@ -90,7 +90,7 @@ jobs:
       if: ${{ github.event.inputs.action == 'destroy' }}
       run: |
         set -euo pipefail
-        REPOS="support-portal-flask-frontend support-portal-flask-backend"
+        REPOS="support-portal-react-frontend support-portal-flask-backend"
     
         for repo in $REPOS; do
           echo " Checking repo: $repo"
