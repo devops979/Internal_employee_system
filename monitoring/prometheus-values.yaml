@@ -1,33 +1,37 @@
-# ────────────────────────────  PROMETHEUS STACK  ────────────────────────────
-# Alertmanager enabled + pinned to *backend* node-group
+# ──────────────────────────────  PROMETHEUS STACK  ─────────────────────────────
 alertmanager:
   enabled: true
   alertmanagerSpec:
     nodeSelector:
-      nodegroup-type: backend               # ⟵ changed
+      nodegroup-type: backend
     receivers:
       - name: default
         email_configs:
           - to: "devops979@gmail.com"
-  configMaps: []                            # rules shipped separately
+  configMaps: []
 
-# Prometheus server pinned to *backend* node-group
 prometheus:
   prometheusSpec:
     nodeSelector:
-      nodegroup-type: backend               # ⟵ changed
+      nodegroup-type: backend
 
-# Node-exporter DaemonSet — run **only** on EC2
 nodeExporter:
   tolerations:
-    - key: "node-role.kubernetes.io/control-plane"
-      operator: "Exists"
-      effect: "NoSchedule"
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
   nodeSelector:
-    eks.amazonaws.com/compute-type: "ec2"
+    eks.amazonaws.com/compute-type: ec2
 
-# ────────────────────────────  SERVICEMONITORS  ─────────────────────────────
-# Scrape your Fargate-based frontend / backend apps
+# ───────────────────────────────  GRAFANA  ────────────────────────────────────
+grafana:
+  service:
+    type: LoadBalancer
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: nlb
+      service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
+
+# ─────────────────────────────  SERVICEMONITORS  ──────────────────────────────
 serviceMonitors:
   - name: backend-fargate
     selector:
