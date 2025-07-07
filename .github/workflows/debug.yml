@@ -48,10 +48,6 @@ jobs:
     - name: Update kubeconfig
       run: |
         aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
-    - name: Deploy manifests
-      working-directory: ./k8s
-      run: |
-        kubectl apply -f backend-deployment.yaml
 
     - name: Debuging the cluster
       run: |
