@@ -51,6 +51,7 @@ jobs:
 
     - name: Debuging the cluster
       run: |
+        kubectl annotate serviceaccount aws-load-balancer-controller -n kube-system eks.amazonaws.com/role-arn=arn:aws:iam::211125325699:role/arn:aws:iam::211125325699:role/support-eks-alb-controller
         kubectl get po -n frontend
         kubectl get po -n backend
         kubectl get svc -n frontend
