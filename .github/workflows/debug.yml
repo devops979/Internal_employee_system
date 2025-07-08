@@ -48,7 +48,10 @@ jobs:
     - name: Describe and labeling the annotations of alb
       run: |
         kubectl describe po aws-load-balancer-controller-f54865949-95rml -n kube-system
-        kubectl logs -f aws-load-balancer-controller-f54865949-95rml -n kube-system
+        kubectl annotate serviceaccount -n kube-system aws-load-balancer-controller eks.amazonaws.com/role-arn=arn:aws:iam::211125325699:role/support-eks-alb-controller
+        kubectl rollout restart deployment aws-load-balancer-controller -n kube-system
+
+
 
 
     # ──────────────────────────────  APPLY STEPS  ───────────────────────────────
