@@ -48,6 +48,7 @@ jobs:
     - name: Describe and labeling the annotations of alb
       run: |
         kubectl describe po aws-load-balancer-controller-f54865949-95rml -n kube-system
+        kubectl logs -f aws-load-balancer-controller-f54865949-95rml -n kube-system
 
 
     # ──────────────────────────────  APPLY STEPS  ───────────────────────────────
