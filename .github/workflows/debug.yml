@@ -54,9 +54,10 @@ jobs:
         kubetcl get po -n frontend
         kubectl get po -n backend
         kubetcl get ing -n frontend
-        kubetcl get ing -n backend
+        kubectl get ing -n backend
         kubectl get po -n kube-system
-        
+        kubectl label node  ip-10-0-11-76.ap-south-1.compute.internal  nodegroup-type=backend        
+        kubectl label node  ip-10-0-12-59.ap-south-1.compute.internal   nodegroup-type=backend  
     - name: Add Helm repos
       if: ${{ github.event.inputs.action == 'apply' }}
       run: |
