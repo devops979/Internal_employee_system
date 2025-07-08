@@ -92,9 +92,6 @@ jobs:
         # Inject the new image tag into the manifest
         sed -i "s|image:.*|image: ${{ env.ECR_REGISTRY }}/support-portal-flask-backend:${{ env.IMAGE_TAG }}|g" backend-deployment.yaml
         sed -i "s|image:.*|image: ${{ env.ECR_REGISTRY }}/support-portal-react-frontend:${{ env.IMAGE_TAG }}|g" frontend-deployment.yaml
-
-        kubectl label node  ip-10-0-11-117.ap-south-1.compute.internal  nodegroup-type=backend        
-        kubectl label node  ip-10-0-12-16.ap-south-1.compute.internal   nodegroup-type=backend  
             
         kubectl apply -f namespace.yaml
         kubectl apply -f serviceaccount.yaml
