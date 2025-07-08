@@ -31,7 +31,7 @@ spec:
             - containerPort: 5000
           env:
             - name: DB_SECRET_ARN
-              value: arn:aws:secretsmanager:ap-south-1:211125325699:secret:support-portal-db-admin-credentials2-SbEwfi
+              value: arn:aws:secretsmanager:ap-south-1:211125325699:secret:support-portal-db-admin-credentials3-W7ml5s
             - name: AWS_REGION
               value: ap-south-1
 
