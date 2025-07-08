@@ -47,6 +47,16 @@ jobs:
 
 
     # ──────────────────────────────  APPLY STEPS  ───────────────────────────────
+    - name: List the pods and ingress in namespaces
+      run: |
+        kubectl get ns
+        kubectl get no
+        kubetcl get po -n frontend
+        kubectl get po -n backend
+        kubetcl get ing -n frontend
+        kubetcl get ing -n backend
+        kubectl get po -n kube-system
+        
     - name: Add Helm repos
       if: ${{ github.event.inputs.action == 'apply' }}
       run: |
